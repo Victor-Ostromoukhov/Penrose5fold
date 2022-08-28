@@ -1,0 +1,47 @@
+(* Content-type: application/mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 7.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       145,          7]
+NotebookDataLength[      1122,         39]
+NotebookOptionsPosition[       663,         23]
+NotebookOutlinePosition[      1159,         41]
+CellTagsIndexPosition[      1116,         38]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{"visuPenrose", "[", "]"}]], "Input",ExpressionUUID->"6fec32fe-cd58-47c6-b2cf-6ef26ae99ea3"]
+},
+WindowSize->{1826, 1322},
+WindowMargins->{{69, Automatic}, {Automatic, 0}},
+PrivateNotebookOptions->{"VersionedStylesheet"->{"Default.nb"[8.] -> False}},
+ShowSelection->True,
+FrontEndVersion->"13.0 for Mac OS X x86 (64-bit) (February 4, 2022)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"bcfb9e87-e619-49ff-9245-3e2c3961760e"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[545, 20, 114, 1, 30, "Input",ExpressionUUID->"6fec32fe-cd58-47c6-b2cf-6ef26ae99ea3"]
+}
+]
+*)
+

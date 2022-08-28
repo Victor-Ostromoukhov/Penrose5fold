@@ -1,0 +1,1481 @@
+(* Penrose5fold.m
+   V.O. 22/5/92 LSP/PEFL
+   Decomposition of the Penrose kite and darts:
+   see Gruenbaum, Shephard Tilings and patterns, p .543. 
+   
+init[];
+dbgInflationsVerticesRhombsOnly[12]
+
+
+makeInitPolyCat[]
+
+
+
+Table[{i, Fibonacci[i]}, {i, 20}] // mf
+{
+ {1, 1},
+ {2, 1},
+ {3, 2},
+ {4, 3},
+ {5, 5},
+ {6, 8},
+ {7, 13},
+ {8, 21},
+ {9, 34},
+ {10, 55},
+ {11, 89},
+ {12, 144},
+ {13, 233},
+ {14, 377},
+ {15, 610},
+ {16, 987},
+ {17, 1597},
+ {18, 2584},
+ {19, 4181},
+ {20, 6765}
+}
+   *)
+
+SetOptions[Graphics, ImageSize->{2 600,Automatic}, AspectRatio->Automatic, PlotRange->All];
+
+systemID = StringSplit[$System][[1]];
+execPrefix = "~/bin/";
+SetDirectory[FileNameJoin[{$HomeDirectory, "Penrose5fold/"}]];
+pid = ToString[$ProcessID];
+eps = 10^-10.;
+niceRaster[img_,OptionsPattern[]] :=
+	Block[ {sx,sy,z},
+		z = OptionValue[zoom];
+		{sy,sx} = Dimensions[img];
+		Return[Graphics[Raster[img],PlotRange->{{0,sx},{0,sy}},ImageSize->{z sx,z sy}]];
+	];
+Options[niceRaster] = {zoom->1};
+
+T:=Transpose
+mf:=MatrixForm
+
+getFourier2D[vals_,fouriertabsz_] :=
+    Module[ {tab,i,x,y},
+    	tab = Table[0,{fouriertabsz},{fouriertabsz}];
+        Do[
+            {x,y} =  vals[[i]];
+            tab[[Mod[y,fouriertabsz,1],Mod[x,fouriertabsz,1]]] = 1;
+        ,{i,Length[vals]}];
+        Return[Fourier[tab]// Abs]
+    ] (* getFourier2D *)
+
+(*randomColorTab = Table[Hue[RandomReal[{0, 1}]], {100}];*)
+randomColorTab = Table[RGBColor[RandomReal[{0, 1}], RandomReal[{0, 1}], RandomReal[{0, 1}]], {100}];
+getRandomColor[i_:-1]:=If[i==-1,randomColorTab[[RandomInteger[{1,Length[randomColorTab]}]]],randomColorTab[[Mod[i,Length[randomColorTab],1] ] ] ]
+
+(******************  params *******************)
+fillTileShape = True;
+showTileShape = True;
+showVertMarks = False;
+showSymmArrows = False;
+showOrder = True;
+  borderTh = .001;
+  cutOutOfRangeFlag = False;
+  symbolicForm = True; t = .; (* t in symbolic form *)
+  showThValues = True;
+  showThValues = False;
+
+(****************** end of params *******************)
+
+(**************** System-dependent setup ******************)
+
+(*Show:=Identity*) (* for compatibility with pre-6 Mathematica ADD Print! *)
+pdfOut:=Export
+
+SetDirectory[ToFileName[$HomeDirectory,"Penrose5fold"]];
+SetOptions[Graphics, ImageSize -> { 1024,Automatic},AspectRatio->Automatic, PlotRange->All];
+SetOptions[ListPlot, ImageSize -> { 600,Automatic},AspectRatio->.2, PlotRange->All];
+SetOptions[ListDensityPlot, ImageSize -> {512,Automatic},AspectRatio->Automatic, PlotRange->All];
+pid = ToString[$ProcessID];
+
+Print["Penrose5fold loaded"];
+(**************** end of System-dependent setup ******************)
+
+(****************** constants *******************)
+typeThickRhomb = 1;
+typeThinRhomb = 2;
+typeKite = 3;
+typeDart = 4;
+mirrorLeft = 1;
+mirrorRight = -1;
+deBruijnIndices0112 = {0, 1, 1, 2};
+deBruijnIndices3221 = {3, 2, 2, 1};
+deBruijnIndices1330 = {1, 3, 3, 0};
+deBruijnIndices2003 = {2, 0, 0, 3};
+deBruijnIndices0223 = {0, 2, 2, 3};
+deBruijnIndices3110 = {3, 1, 1, 0};
+deBruijnIndices1002 = {2, 0, 0, 3};
+deBruijnIndices1002 = {1, 0, 0, 2};
+deBruijnIndices2331 = {2, 3, 3, 1};
+deBruijnIndices0223 = {0, 2, 2, 3};
+deBruijnIndices3110 = {3, 1, 1, 0};
+
+vertU = 0;
+vertA = 1;
+vertB = 2;
+vertC = 3;
+vertD = 4;
+vertE = 5;
+vertF = 6;
+vertG = 7;
+vertH = 8;
+vertI = 9;
+vertJ = 10;
+vertLabels = {"A", "B", "C", "D", "E", "F", "G", "H", "I", "J"};
+
+PI = Pi // N;
+theta = PI/5;            (* 2 basic Penrose tiling's parameters *)
+tau = phi = (Sqrt[5]+1)/2;
+
+tileShapeCol = Black;
+tileShapeSymmCol = Yellow;
+vertMarksColTab = {vertMarksCol0, vertMarksCol1, vertMarksCol2, 
+    vertMarksCol3} = {Yellow, Cyan, Magenta, LightGray};
+fillShapeColTab = {{.9, .9, .9}, {.5, .5, 1}, {.5, 
+    1, .5}, {1, .5, .5}};
+fillShapeDeltaColTab = {{.05, .05, .05}, {.1, .1, 0}, {.1, 
+    0, .1}, {0, .1, .1}};
+
+{xstep, ystep} = {1.7, 1.9};
+{dir, scale} = {1, 1};
+objLstDbgHalvest = {
+       getObject[{typeThickRhomb, mirrorLeft, 
+     deBruijnIndices0112, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 0}, 
+    dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorLeft, 
+     deBruijnIndices0112, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, 0}, dir,
+     scale, {}],
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices0223, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 0}, 
+    dir, scale, {}],
+       getObject[{typeDart, mirrorLeft, 
+     deBruijnIndices1002, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 0}, 
+    dir, scale, {}],
+       getObject[{typeThickRhomb, mirrorLeft, 
+     deBruijnIndices3221, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 
+     ystep}, dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorLeft, 
+     deBruijnIndices3221, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, ystep}, 
+    dir, scale, {}],
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices3110, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 
+     ystep}, dir, scale, {}],
+       getObject[{typeDart, mirrorLeft, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 
+     ystep}, dir, scale, {}],
+       getObject[{typeThickRhomb, mirrorLeft, 
+     deBruijnIndices2003, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorLeft, 
+     deBruijnIndices2003, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeDart, mirrorLeft, 
+     deBruijnIndices3110, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeThickRhomb, mirrorLeft, 
+     deBruijnIndices1330, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 
+     3 ystep}, dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorLeft, 
+     deBruijnIndices1330, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, 
+     3 ystep}, dir, scale, {}],
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices1002, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 
+     3 ystep}, dir, scale, {}],
+       getObject[{typeDart, mirrorLeft, 
+     deBruijnIndices0223, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 
+     3 ystep}, dir, scale, {}]
+   };
+objLstDbg = {
+       getObject[{typeThickRhomb, mirrorLeft, 
+     deBruijnIndices0112, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 0}, 
+    dir, scale, {}],
+       getObject[{typeThickRhomb, mirrorRight, 
+     deBruijnIndices0112, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 0}, 
+    dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorLeft, 
+     deBruijnIndices0112, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, 0}, dir,
+     scale, {}],
+       getObject[{typeThinRhomb, mirrorRight, 
+     deBruijnIndices0112, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, 0}, dir,
+     scale, {}],
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices0223, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 0}, 
+    dir, scale, {}],
+       getObject[{typeKite, mirrorRight, 
+     deBruijnIndices0223, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 0}, 
+    dir, scale, {}] ,
+       getObject[{typeDart, mirrorLeft, 
+     deBruijnIndices1002, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 0}, 
+    dir, scale, {}],
+       getObject[{typeDart, mirrorRight, 
+     deBruijnIndices1002, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 0}, 
+    dir, scale, {}] ,
+   
+       getObject[{typeThickRhomb, mirrorLeft, 
+     deBruijnIndices3221, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 
+     ystep}, dir, scale, {}],
+       getObject[{typeThickRhomb, mirrorRight, 
+     deBruijnIndices3221, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 
+     ystep}, dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorLeft, 
+     deBruijnIndices3221, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, ystep}, 
+    dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorRight, 
+     deBruijnIndices3221, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, ystep}, 
+    dir, scale, {}],
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices3110, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 
+     ystep}, dir, scale, {}],
+       getObject[{typeKite, mirrorRight, 
+     deBruijnIndices3110, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 
+     ystep}, dir, scale, {}] ,
+       getObject[{typeDart, mirrorLeft, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 
+     ystep}, dir, scale, {}],
+       getObject[{typeDart, mirrorRight, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 
+     ystep}, dir, scale, {}] ,
+   
+       getObject[{typeThickRhomb, mirrorLeft, 
+     deBruijnIndices2003, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeThickRhomb, mirrorRight, 
+     deBruijnIndices2003, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorLeft, 
+     deBruijnIndices2003, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorRight, 
+     deBruijnIndices2003, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeKite, mirrorRight, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 
+     2 ystep}, dir, scale, {}] ,
+       getObject[{typeDart, mirrorLeft, 
+     deBruijnIndices3110, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 
+     2 ystep}, dir, scale, {}],
+       getObject[{typeDart, mirrorRight, 
+     deBruijnIndices3110, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 
+     2 ystep}, dir, scale, {}] ,
+   
+       getObject[{typeThickRhomb, mirrorLeft, 
+     deBruijnIndices1330, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 
+     3 ystep}, dir, scale, {}],
+       getObject[{typeThickRhomb, mirrorRight, 
+     deBruijnIndices1330, {{0, 0}, {0, 0}, {0, 0}} }, {0 xstep, 
+     3 ystep}, dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorLeft, 
+     deBruijnIndices1330, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, 
+     3 ystep}, dir, scale, {}],
+       getObject[{typeThinRhomb, mirrorRight, 
+     deBruijnIndices1330, {{0, 0}, {0, 0}, {0, 0}} }, {xstep, 
+     3 ystep}, dir, scale, {}],
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices1002, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 
+     3 ystep}, dir, scale, {}],
+       getObject[{typeKite, mirrorRight, 
+     deBruijnIndices1002, {{0, 0}, {0, 0}, {0, 0}} }, {2 xstep, 
+     3 ystep}, dir, scale, {}] ,
+       getObject[{typeDart, mirrorLeft, 
+     deBruijnIndices0223, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 
+     3 ystep}, dir, scale, {}],
+       getObject[{typeDart, mirrorRight, 
+     deBruijnIndices0223, {{0, 0}, {0, 0}, {0, 0}} }, {3 xstep, 
+     3 ystep}, dir, scale, {}] 
+   };
+
+objLstInitPatch = {
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 1, 
+    scale, {}],
+       getObject[{typeKite, mirrorRight, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 1, 
+    scale, {}] ,
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 3, 
+    scale, {}],
+       getObject[{typeKite, mirrorRight, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 3, 
+    scale, {}] ,
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 5, 
+    scale, {}],
+       getObject[{typeKite, mirrorRight, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 5, 
+    scale, {}] ,
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 7, 
+    scale, {}],
+       getObject[{typeKite, mirrorRight, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 7, 
+    scale, {}] ,
+       getObject[{typeKite, mirrorLeft, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 9, 
+    scale, {}],
+       getObject[{typeKite, mirrorRight, 
+     deBruijnIndices2331, {{0, 0}, {0, 0}, {0, 0}} }, {0, 0}, 9, 
+    scale, {}] 
+   };
+
+
+(****************** end of constants *******************)
+
+(****************** procedure *******************)
+euclidlen[z_] :=
+    Sqrt[z[[1]]^2 + z[[2]]^2];
+
+rotatedaround[pt1_, pt2_, angle_] :=
+ (* gives point which is pt1 rotated around pt2 by angle *)
+    Block[ {res, a},
+        If[ pt1 == pt2,
+            Return[pt1]
+        ];
+        a = ArcTan[(pt1 - pt2)[[1]], (pt1 - pt2)[[2]]];
+        res = pt2 + euclidlen[pt1 - pt2] {Cos[a + angle], Sin[a + angle]};
+        Return[res]
+    ]; (* rotatedaround *)
+
+rotatedaroundandscaled[pt1_, pt2_, angle_, k_] :=
+ (* pt1 rotated around pt2 by angle then vector {pt2,pt1} is scaled k \
+times *)
+    Block[ {res, a},
+        If[ pt1 == pt2,
+            Return[pt1]
+        ];
+        a = ArcTan[(pt1 - pt2)[[1]], (pt1 - pt2)[[2]]];
+        res = pt2 + k euclidlen[pt1 - pt2] {Cos[a + angle], Sin[a + angle]};
+        Return[res]
+    ]; (* rotatedaround *)
+
+arrow[from_, to_] :=
+    Module[ {v1, v2, len, ka1 = .07, ka2 = .025, ka3 = .06, ka},
+        len = euclidlen[to - from] // N;
+        v1 = (to - from)/len;
+        v2 = {-v1[[2]], v1[[1]]};
+        ka = 1/2;
+        {Line[{to - .05*ka*v1, from}], 
+        Polygon[{to, to - ka1 ka v1 - ka2 ka v2, to - ka3 ka v1, 
+        to - ka1 ka v1 + ka2 ka v2}]}
+    ]
+
+(*----------------------- Penrose-specific routines \
+-----------------------*)
+init[] :=
+    Module[ {i},
+        dirTab = 
+        Table[rotatedaround[{1,0}, {0, 0}, 2 Pi (i - 1)/10] // FullSimplify, {i,10}]; (* 1==vertical*)
+        lenThinRhomb = euclidlen[dirTab[[3]] + dirTab[[-2]]]  // FullSimplify;
+        lenThickRhomb = euclidlen[dirTab[[2]] + dirTab[[-1]]]  // FullSimplify;
+        lenKite = euclidlen[dirTab[[2]] + 1/phi dirTab[[-2]]]  // FullSimplify;
+        lenDart =  euclidlen[1/phi dirTab[[4]] + dirTab[[-1]]]  // FullSimplify;
+    ] (* init *)
+
+dumpPts[fname_, pts_] :=
+    Module[ {i, x, y},
+        out = OpenWrite[fname];
+        Do[
+             {x, y} = pts[[i]];
+             str = 
+             ToString[CForm[x]] <> " " <> ToString[CForm[y]] <> " " <> 
+             ToString[-1] <> "\n";
+             WriteString[out, str];
+         , {i, Length[pts]}];
+        Close[out];
+    ] (* dumpPts *)
+
+getObject[objAttributes_, refPt_, dir_, scale_, params_] :=
+    Module[ {},
+        Return[{objAttributes, refPt, dir, scale, params}]
+    ] (* getObject *)
+
+getGLVertMark[{ind_, dir_}, refPt_, scale_] :=
+    If[ ind != vertU,
+        Switch[ind
+        , vertA, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] }
+        , vertB, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 4, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 4, 10, 1]]]}] }
+         , vertC, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 4, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 4, 10, 1]]]}] }
+         , vertD, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 4, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 4, 10, 1]]]}] }
+         , vertE, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 1, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 1, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 4, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 4, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 3, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 3, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] }
+         , vertF, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] }
+         , vertG, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 1, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 1, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] }
+         , vertH, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 1, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 1, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 3, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 3, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] }
+         , vertI, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 1, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 1, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 3, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 3, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] }
+         , vertJ, {Red, Thickness[.005], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 0, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 5, 10, 1]]]}],
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 1, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 1, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 3, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 3, 10, 1]]]}] ,
+              Line[{refPt, refPt + scale/5  dirTab[[Mod[dir + 2, 10, 1]]]}], 
+        Line[{refPt, refPt + scale/5  dirTab[[Mod[dir - 2, 10, 1]]]}] }
+         ],
+        {}
+    ]
+
+
+getGLobjLst[objLst_] :=
+    Block[ {glmarks = {}, globj = {}, i, g1, g2},
+        Do[
+         {g1, g2} = getGLobj[objLst[[i]],i];
+         glmarks = Join[glmarks, g1];
+         globj = Join[globj, g2];
+        , {i, Length[objLst]}];
+        Return[{glmarks, globj}]
+    ] (* getGLobjLst *)
+
+getGLobj[obj_,n_] :=
+    Block[ {glmarks = {}, globj = {Thickness[.003]}, i, 
+    objAttributes, refPt, dir, scale, params, tileType, mirror, labelFontSize=8,
+    deBruijnIndices, c1, c2, vInd, vInd1, vInd2, vInd3, v1, v2, v3, v4},
+        {objAttributes, refPt, dir, scale, params} = obj;
+        {tileType, mirror, deBruijnIndices, vInd} = objAttributes;
+        cont = {v1, v2, v3, v4} = getTilePath[obj] // closePath;
+        If[ fillTileShape,
+            AppendTo[
+            globj, {RGBColor[
+            fillShapeColTab[[tileType]] + 
+            mirror fillShapeDeltaColTab[[tileType]]], Polygon[cont]}]
+        ];
+        If[ showSymmArrows,
+            AppendTo[
+            glmarks, {Blue, arrow[(5 v1 + 5 v2)/10, (3 v1 + 7 v2)/10]}]
+        ];
+        If[ showOrder,
+            AppendTo[
+            glmarks,Text[n,(v1+v2+v3)/3]]
+        ];
+        If[ showTypes,
+        	(*If[(tileType == 1) || (tileType == 3), AppendTo[glmarks,Point[(v2+9v4)/10]] ];
+        	If[(tileType == 2) || (tileType == 4), AppendTo[glmarks,Point[(9v2+v4)/10]] ];*)
+        	AppendTo[glmarks,Point[(v2+9v4)/10]];
+            AppendTo[glmarks,Text[tileType,(v2+v4)/2,{0,-1}]];
+            AppendTo[glmarks,Text[StringJoin[ToString/@deBruijnIndices],(v2+v4)/2,{0,1}]];           
+        ];
+        If[ showTileShape,
+            {c1, c2} = {Take[cont, 2], Drop[cont, 1]};
+            AppendTo[globj, {tileShapeSymmCol, Line[c1]}];
+            AppendTo[globj, {tileShapeCol, Line[c2]}]
+        ];
+        If[ showVertMarks,
+            {vInd1, vInd2, vInd3} = vInd;
+            AppendTo[glmarks, {getGLVertMark[vInd1, v1, scale]}];
+            AppendTo[glmarks, {getGLVertMark[vInd2, v2, scale]}];
+            AppendTo[glmarks, {getGLVertMark[vInd3, v3, scale]}];
+            AppendTo[
+            glmarks, {vertMarksColTab[[deBruijnIndices[[1]] + 1]], 
+            Disk[v1, rMark], Black, Circle[v1, rMark] }];
+            AppendTo[
+            glmarks, {vertMarksColTab[[deBruijnIndices[[4]] + 1]], 
+            Disk[v2, rMark], Black, Circle[v2, rMark] }];
+            AppendTo[
+            glmarks, {vertMarksColTab[[deBruijnIndices[[3]] + 1]], 
+            Disk[v3, rMark], Black, Circle[v3, rMark] }];
+            (*If[ vInd1[[1]] != vertU,
+                AppendTo[ glmarks, {Text[ Style[vertLabels[[vInd1[[1]]]], Bold, FontSize -> labelFontSize], v1]}];
+            ];
+            If[ vInd2[[1]] != vertU,
+                AppendTo[ glmarks, {Text[ Style[vertLabels[[vInd2[[1]]]], Bold, FontSize -> labelFontSize], v2]}];
+            ];
+            If[ vInd3[[1]] != vertU,
+                AppendTo[ glmarks, {Text[ Style[vertLabels[[vInd3[[1]]]], Bold, FontSize -> labelFontSize], v3]}];
+            ];*)
+            AppendTo[glmarks,{Text[Style[ToString[deBruijnIndices[[1]]],Bold, FontSize->labelFontSize],v1]}];
+            AppendTo[glmarks,{Text[Style[ToString[deBruijnIndices[[4]]],Bold, FontSize->labelFontSize],v2]}];
+            AppendTo[glmarks,{Text[Style[ToString[deBruijnIndices[[3]]],Bold, FontSize->labelFontSize],v3]}];
+    
+        ];
+        Return[{glmarks, globj}]
+    ] (* getGLobj *)
+
+closePath[path_] :=
+    Join[path, {First[path]}]
+
+getTilePath[obj_] :=
+    Block[ {glmarks = {}, globj = {}, i, objAttributes, refPt, dir, 
+    scale, params, tileType, mirror, deBruijnIndices, vlst, vInd},
+        {objAttributes, refPt, dir, scale, params} = obj;
+        {tileType, mirror, deBruijnIndices, vInd} = objAttributes;
+        (* v1 *)
+        vlst = {refPt};
+        (* v2 *)
+        Switch[tileType
+         , typeThickRhomb, 
+        AppendTo[vlst, 
+        refPt + scale lenThickRhomb dirTab[[Mod[dir, 10, 1]]] ]
+         , typeThinRhomb, 
+        AppendTo[vlst, 
+        refPt + scale lenThinRhomb dirTab[[Mod[dir, 10, 1]]] ]
+         , typeKite, 
+        AppendTo[vlst, refPt + scale lenKite dirTab[[Mod[dir, 10, 1]]] ]
+         , typeDart, 
+        AppendTo[vlst, refPt + scale lenDart dirTab[[Mod[dir, 10, 1]]] ]
+         ];
+        (* v3 *)
+        Switch[tileType
+         , typeThickRhomb, 
+        AppendTo[vlst, refPt + scale  dirTab[[Mod[dir + 1 mirror, 10, 1]]] ]
+         , typeThinRhomb, 
+        AppendTo[vlst, refPt + scale  dirTab[[Mod[dir + 2 mirror, 10, 1]]] ]
+         , typeKite, 
+        AppendTo[vlst, refPt + scale  dirTab[[Mod[dir + 1 mirror, 10, 1]]] ]
+         , typeDart, 
+        AppendTo[vlst, 
+        refPt + scale/phi  dirTab[[Mod[dir + 3 mirror, 10, 1]]] ]
+         ];
+        Return[vlst]
+    ] (* getTilePath *)
+
+vertProduction[{vertType_, 
+   dir_}] :=
+    {vertType /. {vertA :> vertB, vertB :> vertC, 
+    vertC :> vertD, vertD :> vertE, vertF :> vertG, vertG :> vertH, 
+    vertH :> vertI, vertI :> vertJ, vertJ :> vertE}, dir}
+decomposeObjLst[objLst_] :=
+    Block[ {res = {}, i, len = Length[objLst]},
+        Do[res = Join[res, decomposeObj[objLst[[i]] ] ]  , {i, len}];
+        Return[res];
+    ] (* decomposeObjLst *)
+
+decomposeObj[obj_] :=
+    Block[ {res = {}, objAttributes, refPt, dir, scale, params, 
+    tileType, mirror, deBruijnIndices, v1, v2, v3, v4, vInd, vInd1, 
+    vInd2, vInd3, vInd4},
+        {objAttributes, refPt, dir, scale, params} = obj;
+        {tileType, mirror, deBruijnIndices, vInd} = objAttributes;
+        {v1, v2, v3} = getTilePath[obj];
+        {vInd1, vInd2, vInd3} = vertProduction /@ vInd;
+        Switch[{tileType, deBruijnIndices}
+        (*---------------------------- typeThickRhomb ----------------------------*)
+             , {typeThickRhomb, deBruijnIndices0112}, v4 = (v2/phi + v1)/phi;
+                              vInd4 = {vertF, dir};
+                              AppendTo[res, 
+                              getObject[{typeKite, mirror, 
+                              deBruijnIndices2331, {vInd2, vInd3, vInd4}}, v2, 
+                              Mod[dir - mirror 6, 10, 1], scale, params] ];
+                              AppendTo[res, 
+                              getObject[{typeDart, -mirror, 
+                              deBruijnIndices3110, {vInd4, vInd1, vInd3}}, v4, 
+                              Mod[dir - mirror 5, 10, 1], scale, params] ];
+ 			, {typeThickRhomb, deBruijnIndices3221}, v4 = (v2/phi + v1)/phi;
+                              vInd4 = {vertF, dir};
+                              AppendTo[res, 
+                              getObject[{typeKite, mirror, 
+                              deBruijnIndices1002, {vInd2, vInd3, vInd4}}, v2, 
+                              Mod[dir - mirror 6, 10, 1], scale, params] ];
+                              AppendTo[res, 
+                              getObject[{typeDart, -mirror, 
+                              deBruijnIndices0223, {vInd4, vInd1, vInd3}}, v4, 
+                              Mod[dir - mirror 5, 10, 1], scale, params] ];
+ 			, {typeThickRhomb, deBruijnIndices2003}, v4 = (v2/phi + v1)/phi;
+                              vInd4 = {vertF, Mod[dir + 0, 10, 1]};
+                              AppendTo[res, 
+                              getObject[{typeKite, mirror, 
+                              deBruijnIndices3110, {vInd2, vInd3, vInd4}}, v2, 
+                              Mod[dir - mirror 6, 10, 1], scale, params] ];
+                              AppendTo[res, 
+                              getObject[{typeDart, -mirror, 
+                              deBruijnIndices1002, {vInd4, vInd1, vInd3}}, v4, 
+                              Mod[dir - mirror 5, 10, 1], scale, params] ];
+ 			, {typeThickRhomb, deBruijnIndices1330}, v4 = (v2/phi + v1)/phi;
+                              vInd4 = {vertF, dir};
+                              AppendTo[res, 
+                              getObject[{typeKite, mirror, 
+                              deBruijnIndices0223, {vInd2, vInd3, vInd4}}, v2, 
+                              Mod[dir - mirror 6, 10, 1], scale, params] ];
+                              AppendTo[res, 
+                              getObject[{typeDart, -mirror, 
+                              deBruijnIndices2331, {vInd4, vInd1, vInd3}}, v4, 
+                              Mod[dir - mirror 5, 10, 1], scale, params] ];
+        (*----------------------------  typeThinRhomb ----------------------------*)
+             , {typeThinRhomb, deBruijnIndices0112},
+                 AppendTo[res, 
+        getObject[{typeKite, -mirror, 
+         deBruijnIndices1002, {vInd3, vInd2, vInd1}}, v3, 
+        Mod[dir - mirror 2, 10, 1], scale, params] ];
+           , {typeThinRhomb, deBruijnIndices3221},
+               AppendTo[res, 
+     getObject[{typeKite, -mirror, 
+       deBruijnIndices2331, {vInd3, vInd2, vInd1}}, v3, 
+      Mod[dir - mirror 2, 10, 1], scale, params] ];
+           , {typeThinRhomb, deBruijnIndices2003},
+               AppendTo[res, 
+     getObject[{typeKite, -mirror, 
+       deBruijnIndices0223, {vInd3, vInd2, vInd1}}, v3, 
+      Mod[dir - mirror 2, 10, 1], scale, params] ];
+           , {typeThinRhomb, deBruijnIndices1330},
+               AppendTo[res, 
+     getObject[{typeKite, -mirror, 
+       deBruijnIndices3110, {vInd3, vInd2, vInd1}}, v3, 
+      Mod[dir - mirror 2, 10, 1], scale, params] ];
+   (*----------------------------  typeKite ----------------------------*)
+           , {typeKite, deBruijnIndices0223}, 
+   vInd4 = {vertA, Mod[dir + 0, 10, 1]};
+   AppendTo[res, 
+   getObject[{typeThickRhomb, -mirror, 
+   deBruijnIndices0112, {vInd1, vInd3, vInd4}}, v1, 
+   Mod[dir + mirror 1, 10, 1], scale/phi, params] ];
+   AppendTo[res, 
+   getObject[{typeThinRhomb, -mirror, 
+   deBruijnIndices3221, {vInd2, vInd4, vInd3}}, v2, 
+   Mod[dir + mirror 5, 10, 1], scale/phi, params] ];
+           , {typeKite, deBruijnIndices3110}, 
+   vInd4 = {vertA, Mod[dir + 0, 10, 1]};
+   AppendTo[res, 
+   getObject[{typeThickRhomb, -mirror, 
+   deBruijnIndices3221, {vInd1, vInd3, vInd4}}, v1, 
+   Mod[dir + mirror 1, 10, 1], scale/phi, params] ];
+   AppendTo[res, 
+   getObject[{typeThinRhomb, -mirror, 
+   deBruijnIndices0112, {vInd2, vInd4, vInd3}}, v2, 
+   Mod[dir - mirror 5, 10, 1], scale/phi, params] ];
+           , {typeKite, deBruijnIndices2331}, 
+   vInd4 = {vertA, Mod[dir + 0, 10, 1]};
+   AppendTo[res, 
+   getObject[{typeThickRhomb, -mirror, 
+   deBruijnIndices2003, {vInd1, vInd3, vInd4}}, v1, 
+   Mod[dir + mirror 1, 10, 1], scale/phi, params] ];
+   AppendTo[res, 
+   getObject[{typeThinRhomb, -mirror, 
+   deBruijnIndices1330, {vInd2, vInd4, vInd3}}, v2, 
+   Mod[dir + mirror 5, 10, 1], scale/phi, params] ];
+           , {typeKite, deBruijnIndices1002}, 
+   vInd4 = {vertA, Mod[dir + 0, 10, 1]};
+   AppendTo[res, 
+   getObject[{typeThickRhomb, -mirror, 
+   deBruijnIndices1330, {vInd1, vInd3, vInd4}}, v1, 
+   Mod[dir + mirror 1, 10, 1], scale/phi, params] ];
+   AppendTo[res, 
+   getObject[{typeThinRhomb, -mirror, 
+   deBruijnIndices2003, {vInd2, vInd4, vInd3}}, v2, 
+   Mod[dir - mirror 5, 10, 1], scale/phi, params] ];
+   (*---------------------------- typeDart ----------------------------*)
+           , {typeDart, deBruijnIndices1002},
+               AppendTo[res, 
+     getObject[{typeThickRhomb, -mirror, 
+       deBruijnIndices0112, {vInd3, vInd2, vInd1}}, v3, 
+      Mod[dir - mirror 1, 10, 1], scale/phi, params] ];
+           , {typeDart, deBruijnIndices2331},
+               AppendTo[res, 
+     getObject[{typeThickRhomb, -mirror, 
+       deBruijnIndices3221, {vInd3, vInd2, vInd1}}, v3, 
+      Mod[dir - mirror 1, 10, 1], scale/phi, params] ];
+           , {typeDart, deBruijnIndices3110},
+               AppendTo[res, 
+     getObject[{typeThickRhomb, -mirror, 
+       deBruijnIndices1330, {vInd3, vInd2, vInd1}}, v3, 
+      Mod[dir - mirror 1, 10, 1], scale/phi, params] ];
+           , {typeDart, deBruijnIndices0223},
+               AppendTo[res, 
+     getObject[{typeThickRhomb, -mirror, 
+       deBruijnIndices2003, {vInd3, vInd2, vInd1}}, v3, 
+      Mod[dir - mirror 1, 10, 1], scale/phi, params] ];
+       ];
+        Return[res//FullSimplify]
+    ] (* decomposeObj *)
+
+dbgInflations[] :=
+    Module[ {p1, p2},
+        SetOptions[Graphics, ImageSize -> {800, Automatic}];
+        (*objLstDbg=objLstDbgHalvest;*)
+        init[];
+        showVertMarks = False;
+        showOrder = False;
+        showTypes = True;
+        rMark = scale/10;
+        range = All;
+        range = {{-1, 6.2}, {-1, 4 1.9}};
+        objLst = objLstDbg;
+        {glmarks, globj} = getGLobjLst[objLst];
+        p1 = Show[Graphics[{globj, glmarks}], AspectRatio -> Automatic, PlotRange -> range, PlotLabel -> "Penrose Rhombs, Kites and Darts, iter=0", Axes -> False];
+        objLst = decomposeObjLst[objLst];
+        {glmarks, globj} = getGLobjLst[objLst];
+        p2 = Show[Graphics[{globj, glmarks}], AspectRatio -> Automatic, PlotRange -> range, PlotLabel -> "Penrose Rhombs, Kites and Darts, iter=1", Axes -> False];
+        objLst = decomposeObjLst[objLst];
+        {glmarks, globj} = getGLobjLst[objLst];
+        p3 = Show[Graphics[{globj, glmarks}], AspectRatio -> Automatic,  PlotRange -> range,  PlotLabel -> "Penrose Rhombs, Kites and Darts, iter=1",  Axes -> False];
+        objLst = decomposeObjLst[objLst];
+        {glmarks, globj} = getGLobjLst[objLst];
+        p4 = Show[Graphics[{globj, glmarks}], AspectRatio -> Automatic,  PlotRange -> range,  PlotLabel -> "Penrose Rhombs, Kites and Darts, iter=1",  Axes -> False];
+        Return[{p1, p2, p3, p4}]
+    ] (* dbgInflations *)
+
+dbgInflationsInitPatch[] :=
+    Module[ {ptab},
+        niters = 5;
+        SetOptions[Graphics, ImageSize -> {1000, Automatic}];
+        rMark = scale/50;
+        range = All;
+        {glmarks, globj} = getGLobjLst[objLstInitPatch];
+        ptab = {Show[Graphics[{globj, glmarks}], AspectRatio -> Automatic, 
+        PlotRange -> range, 
+        PlotLabel -> "Penrose Rhombs, Kites and Darts, iter=0", 
+        Axes -> False]};
+        Do[
+             objLstInitPatch = decomposeObjLst[objLstInitPatch];
+             {glmarks, globj} = getGLobjLst[objLstInitPatch];
+             p = Show[Graphics[{globj, glmarks}], AspectRatio -> Automatic, 
+             PlotRange -> range,
+                   PlotLabel -> 
+             "Penrose Rhombs, Kites and Darts, iter=" <> ToString[iter], 
+             Axes -> False];
+             AppendTo[ptab, p];
+             pdfOut["p_kites_darts_iter" <> ToString[iter] <> ".pdf", p];
+         , {iter, niters}];
+        Return[ptab]
+    ] (* dbgInflationsInitPatch *)
+
+dbgVoronoi[] :=
+    Module[ {ptab = {}},
+        niters = 14;
+        SetOptions[Graphics, ImageSize -> {1000, Automatic}];
+        rMark = scale/150;
+        range = {{-.1, .6}, {-.1, .6}};
+        Do[
+             objLstInitPatch = decomposeObjLst[objLstInitPatch];
+             {glmarks, globj} = getGLobjLst[objLstInitPatch];
+             pts = Flatten[getTilePath /@ objLstInitPatch, 1];
+             pts = Union[Round[pts*2^20]]/2.^20;
+             dumpPts["tmp/pts.txt", pts];
+             Run["delaunay tmp/pts.txt tmp/dpts.txt tmp/vpts.txt tmp/dummy.txt"];
+             ptsvor = 
+             ReadList["tmp/vpts.txt", {Real, Real, Real, Real, Real, Real}];
+             lines = {Take[#1, {1, 2}], Take[#1, {4, 5}]} & /@ ptsvor;
+             p = Show[
+             Graphics[{globj, glmarks, Red, Thickness[.003], Line /@ lines}], 
+             AspectRatio -> Automatic, PlotRange -> range,
+                   PlotLabel -> 
+             "Penrose Rhombs, Kites and Darts, iter=" <> ToString[iter], 
+             Axes -> False];
+             (*AppendTo[ptab,p];*)
+             pdfOut["p_vor_kites_darts_iter" <> ToString[iter] <> ".pdf", p];
+         , {iter, niters}];
+        Return[ptab]
+    ] (* dbgVoronoi *)
+
+
+dbgInflationsVertices[niters_] :=
+    Module[ {ptab},
+        SetOptions[Graphics, ImageSize -> {600, Automatic}];
+        init[];
+        showVertMarks = True;
+        rMark = scale/75;
+        range = All;
+        objLstInitPatch = objLstDbg;
+        objLstInitPatch = { 
+        	getObject[{typeThickRhomb, mirrorLeft, deBruijnIndices1330, {{vertI, 1}, {vertG, 6}, {vertA,  2}} }, {0 , 0}, dir, scale, {}],
+			getObject[{typeThickRhomb, mirrorRight, deBruijnIndices1330, {{vertI, 1}, {vertG, 6}, {vertA, 10}} }, {0 , 0}, dir, scale, {}]
+        };
+        {glmarks, globj} = getGLobjLst[objLstInitPatch];
+        ptab = {Show[Graphics[{globj, glmarks}], AspectRatio -> Automatic, PlotRange -> range, PlotLabel -> "Penrose Rhombs, Kites and Darts, iter=0", Axes -> False]};
+        Do[
+             objLstInitPatch = decomposeObjLst[objLstInitPatch];
+             {glmarks, globj} = getGLobjLst[objLstInitPatch];
+             p = Show[Graphics[{(*Opacity[0.5],*)globj, glmarks}], AspectRatio -> Automatic, PlotRange -> range,
+             	PlotLabel -> "Penrose Rhombs, Kites and Darts, iter=" <> ToString[iter], Axes -> False];
+             AppendTo[ptab, p];
+             pdfOut["results/p_kites_darts_iter" <> ToString[iter] <> ".pdf", p];
+         , {iter, niters}];
+        Return[ptab]
+    ] (* dbgInflationsVertices *)
+
+dbgInflationsVerticesRhombsOnly[niters_] :=
+    Module[ {ptab},
+        SetOptions[Graphics, ImageSize -> {1000, Automatic}];
+        rMark = scale/75;
+        range = All;
+        objLstInitPatch = objLstDbg;
+        objLstInitPatch = { getObject[{typeThickRhomb, mirrorLeft, 
+        deBruijnIndices1330, {{vertI, 1}, {vertG, 6}, {vertA,  2}} }, {0 , 0}, dir, scale, {}],
+              getObject[{typeThickRhomb, mirrorRight, deBruijnIndices1330, {{vertI, 1}, {vertG, 6}, {vertA, 10}} }, {0 , 0}, dir, scale, {}]
+        };
+        {glmarks, globj} = getGLobjLst[objLstInitPatch];
+        ptab = {Show[Graphics[{globj, glmarks}], AspectRatio -> Automatic, PlotRange -> range, PlotLabel -> "Penrose Rhombs, Kites and Darts, iter=0", Axes -> False]};
+        Do[
+             objLstInitPatch = decomposeObjLst[objLstInitPatch];
+             If[EvenQ[iter],
+	             {glmarks, globj} = getGLobjLst[objLstInitPatch];
+	             p = Show[Graphics[{(*Opacity[0.5],*)globj, glmarks}], AspectRatio -> Automatic, PlotRange -> range,
+	             	PlotLabel -> "Penrose Rhombs, Kites and Darts, iter=" <> ToString[iter], Axes -> False];
+	             AppendTo[ptab, p];
+	             pdfOut["results/p_kites_darts_iter" <> ToString[iter] <> ".pdf", p];
+             ];
+         , {iter, niters}];
+        Return[ptab]
+    ] (* dbgInflationsVerticesRhombsOnly *)
+
+(****************** end of procedure *******************)
+
+(*------------------------- program starts here ------------------------
+init[];
+dbgInflations[]//Print
+
+dbgInflationsVertices[5]
+
+ptab = dbgInflations[]
+  pdfOut["p_dbg_kites_darts_iter" <> ToString[1] <> ".pdf", ptab[[1]]];
+pdfOut["p_dbg_kites_darts_iter" <> ToString[2] <> ".pdf", ptab[[2]]];
+pdfOut["p_dbg_kites_darts_iter" <> ToString[3] <> ".pdf", ptab[[3]]];
+pdfOut["p_dbg_kites_darts_iter" <> ToString[4] <> ".pdf", ptab[[4]]];
+
+dbgInflationsInitPatch[]
+  ptab = dbgInflations[]
+  dbgVoronoi[];
+		p = Show[Graphics[{Opacity[0.5], globj, glmarks}], 
+  AspectRatio -> Automatic, PlotRange -> range,
+  			PlotLabel -> 
+   "Penrose Rhombs, Kites and Darts, iter=" <> ToString[iter], 
+  Axes -> False, FontSize -> 32];
+-----------------------------------------------------------------------*)
+
+(*----------------------------- PenroseClassical -----------------------------*)
+
+getShapeID[tile_]:=Module[{res,pos, relShape = getRelativeTile[tile//Sort]}, (* search in shapeCatalog *)
+		If[Length[shapeCatalog]==0,shapeCatalog = {}];
+		If[(pos=Position[shapeCatalog,relShape])==={},
+			AppendTo[shapeCatalog,relShape];
+			res = Length[shapeCatalog]
+		,(*ELSE*)
+			res = pos[[1,1]]
+		];
+		Return[res]
+	] (* getLocalTileShapeID *)
+
+
+
+getPenroseClassicalFigure[{type_,z0_,dir_,mag_,extra_}]:=Return[{type, z0, dir, mag, extra}]
+
+
+decomposePenroseClassical[fig_] :=
+    Block[ {res = {},type,z0,z1,z2,z3,subdivLevel,symb,s0,thval,dir, mag, extra},
+        {type, z0, dir, mag, extra} = fig;
+        {z0,z1,z2,z3} = getFigureVertices[fig];
+        Switch[type(*zzzzzzzzzz*)
+        ,rThick,
+          If[ OddQ[dir],
+              s0 = 0,
+              s0 = 3
+          ];
+          AppendTo[res,getFigure[{rThick,z3,mod10[dir-4],mag/tau,{}}] ];
+          AppendTo[res,getFigure[{rThick,z2,mod10[dir+5],mag/tau,{}}] ];
+              AppendTo[res,getFigure[{rThin,z1,mod10[dir+1],mag/tau,{}}] ];
+          If[ redundantFlag,
+	          AppendTo[res,getFigure[{rThin,z3,mod10[dir-1],mag/tau,{}}] ];
+              AppendTo[res,getFigure[{rThick,z1,mod10[dir+4],mag/tau,{}}] ];
+          ]; (* If[redundantFlag, *)
+        ,rThin,
+          AppendTo[res,getFigure[{rThick,z3,mod10[dir-3],mag/tau,{}}] ];
+          AppendTo[res,getFigure[{rThin,z2,mod10[dir+3],mag/tau,{}}] ];
+          If[ redundantFlag,
+              AppendTo[res,getFigure[{rThick,z1,mod10[dir+3],mag/tau,{}}] ];
+              AppendTo[res,getFigure[{rThin,z2,mod10[dir-3],mag/tau,{}}] ];
+          ]; (* If[redundantFlag, *)
+        ]; (*switch*)
+        Return[res]
+    ] (* getPenroseClassicalFigure *)
+
+
+colorTab = {Cyan,Magenta,Yellow,Red,Green,Blue,Gray};
+getColor[i_]:=colorTab[[Mod[i,7,1] ]]
+
+getGLPenrose[fig_]:=Block[{gl={},type, z0,z1,z2,z3, dir, mag, extra,subdivLevel,symb,z01,z12,z23,z30,z02,thval,z},
+  If[dbgLst, Print["getGFigure ",++count,"/",lstlen," iter=",iter]];
+  {type, z0, dir, mag, extra} = fig;
+  {z0,z1,z2,z3} = getFigureVertices[fig];
+  If[showOrigin,
+      AppendTo[gl,Point[(10z0+z2)/11] ]
+  ]; (* showOrigin *)
+  If[fillShape,
+    AppendTo[gl,{getColor[type],Polygon[{z0,z1,z2,z3,z0}]} ];
+  ];
+  If[borderFlag,
+    AppendTo[gl,Line[{z0,z1,z2,z3,z0}] ];
+  ]; (* If[borderFlag *)
+  If[showType,
+    AppendTo[gl,{Blue,Text[type,Mean@{z0,z1,z2,z3}]} ];
+  ]; (* If[showType *)
+  
+  Return[gl]
+] (* getGLPenrose *)
+
+getFigure[{type_,z0_,dir_,mag_,extra_}]:={type, z0, dir, mag, extra}
+
+getFigureVertices[{type_,z0_,dir_,mag_,extra_}]:=Block[{z1,z2,z3},
+  If[type >= 0, (* tThickXXX *)
+    z1 = z0 + mag uvect[[mod10[dir-1]]];
+    z3 = z0 + mag uvect[[mod10[dir+1]]];
+  ,(*ELSE*)
+    z1 = z0 + mag uvect[[mod10[dir-2]]];
+    z3 = z0 + mag uvect[[mod10[dir+2]]];
+  ];
+  z2 = z1 + (z3-z0);
+  Return[{z0,z1,z2,z3}]
+] (* getFigureVertices *)
+
+scaledTile[{type_, z0_, dir_, mag_, extra_},k_]:={type, k z0, dir, k mag, extra}//FullSimplify
+
+mod10[x_]:=Mod[x-1,10]+1
+
+rThick = 1;
+rThin = -1;
+
+makeInitPolyCat[niters_:2]:=
+    Module[ {},
+        SetOptions[Graphics, ImageSize -> {1500, Automatic}];
+        redundantFlag = True;
+        borderFlag = True;
+        showOrigin  = True;
+        fillShape  = False;
+        showType = True;
+		zero = {0,0};
+		uvect = Table[rotatedaround[{0,1},zero,(i-1) PI/5]//N//Chop, {i,10}];
+		uvectrot = RotateRight[uvect,2];
+
+		flst = {
+			getFigure[{rThick,{0,0},1,1,{0}}]
+			,getFigure[{rThin,{2,0},1,1,{0}}]
+			};
+		prevgl = getGLPenrose /@ flst;
+		prevgl // Graphics // Print;
+        (*fillShape  = True;*)
+        Do[
+        	flst = Flatten[#,1]& @ (decomposePenroseClassical /@ flst);
+	        gl = getGLPenrose /@ flst;
+			Graphics[{{Red,prevgl},
+	 		Opacity[0.5],gl}, AspectRatio -> Automatic, PlotRange -> All,
+	             	Axes -> False]//Print;
+        , {iter, niters}];
+]
+
+
+(*--------------------- penrose10d jan 2013 ---------------------*)
+mf:= MatrixForm;
+
+tileThickRhomb = 1;
+tileThinRhomb = 2;
+tileKite = 3;
+tileDart = 4;
+
+typeColTab = {LightGray, LightBlue, LightGreen,LightRed, LightYellow,LightPink,LightOrange,LightCyan,LightPurple,LightMagenta,LightRed,LightGreen,LightBlue,LightGray};
+
+dir10dScaleTab10 = Table[ rotatedaround[{1,0}, {0, 0}, 2 Pi (idir - 1)/10] phi^-iscale// N, {idir,10},{iscale,0,31}];
+
+v10dtov2d[v10d_] :=
+    Module[ {len = Length[v10d[[1]]],ilen,idir},
+        Total@(Total/@Table[v10d[[idir,ilen]] dir10dScaleTab10[[idir,ilen]],{idir,10},{ilen,len}])
+] (* v10dtov2d *)
+
+rotatetile[tile_,nrot_:1] :=
+    Module[ {type,dir,v10dlst},
+    	{type,dir,v10dlst} = tile;
+    	{type,Mod[dir+nrot,10,1],RotateRight[#,nrot]& /@ v10dlst}
+    ]
+
+shifttile[tile_,shift_:{{},{},{},{},{},{},{},{},{},{}}] :=
+    Module[ {type,dir,v10dlst,len},
+    	{type,dir,v10dlst} = tile;
+    	len = Max[Length[shift[[1]]],Length[v10dlst[[1,1]] ] ];
+    	{type,dir,Plus[(PadLeft[#,len]& /@ shift),(PadLeft[#,len]& /@ #)]& /@ v10dlst}
+    ]
+
+gettilecenetr[tile_] := With[{vlst=v10dtov2d/@tile[[3]]},(vlst[[1]]+vlst[[3]])/2]
+
+gettilcontour[tile_] := With[{vlst=v10dtov2d/@tile[[3]]},closePath[vlst]]
+
+getGLpenrose10d[tile_] :=
+    Module[ {type,dir,v10dlst,vlst},
+    	{type,dir,v10dlst} = tile;
+    	vlst = v10dtov2d /@ v10dlst;
+    	{
+    		{typeColTab[[type]],Polygon@vlst},
+    		(*Text[type, (vlst[[1]]+vlst[[3]])/2],*)
+    		(*Text[Position[tilelst,tile][[1,1]], (vlst[[1]]+vlst[[3]])/2],*)
+    		(*Point[(9 vlst[[1]]+vlst[[3]])/10],
+    		Line[{(9 vlst[[1]]+vlst[[3]])/10,(9 vlst[[1]]+vlst[[3]])/10+dir10dScaleTab10[[dir,Length[v10dlst[[1,1]]]+5]]}],*)
+    		Line@(closePath@vlst)
+    	}
+] (* getGLpenrose10d *)
+
+subdivpenrose10d[tile_] :=
+    Module[ {type,dir,v10d1,v10d2,v10d3,v10d4,newv10d1,newv10d2,newv10d3,newv10d4},
+    	{type,dir,{v10d1,v10d2,v10d3,v10d4}} = tile;
+    	Switch[type
+    	,tileThickRhomb,
+    		{
+    			{newv10d1,newv10d2,newv10d3,newv10d4} = {v10d3,v10d4,v10d1,v10d2};
+    			newv10d1[[Mod[dir+5,10,1],-1]] = 1;
+    			{tileDart,Mod[dir+5,10,1],{newv10d1,newv10d2,newv10d3,newv10d4}},
+    			{newv10d1,newv10d2,newv10d3,newv10d4} = {v10d3,v10d3,v10d2,v10d3};
+    			newv10d2[[Mod[dir+5,10,1],-1]] = 1;
+    			newv10d4[[Mod[dir+7,10,1],-1]] = 1;
+    			{tileKite,Mod[dir+6,10,1],{newv10d1,newv10d2,newv10d3,newv10d4}}
+    		}
+    	,tileThinRhomb,
+    		{
+    			{newv10d1,newv10d2,newv10d3,newv10d4} = {v10d4,v10d1,v10d3,v10d4};
+    			newv10d4[[Mod[dir+9,10,1],-1]] = 1;
+    			{tileKite,Mod[dir+8,10,1],{newv10d1,newv10d2,newv10d3,newv10d4}}
+    		}
+    	,tileKite,
+    		{
+    			newv10d1 = Append[#,0]& /@ v10d1;
+    			newv10d2 = Append[#,0]& /@ v10d1;
+    			newv10d3 = Append[#,0]& /@ v10d4;
+    			newv10d4 = Append[#,0]& /@ v10d1;
+    			newv10d2[[Mod[dir ,10,1],-1]] = 1;
+    			newv10d4[[Mod[dir+2,10,1],-1]] = 1;
+    			{tileThickRhomb,Mod[dir+1,10,1],{newv10d1,newv10d2,newv10d3,newv10d4}},
+    			newv10d1 = Append[#,0]& /@ v10d3;
+    			newv10d2 = Append[#,0]& /@ v10d3;
+    			newv10d3 = Append[#,0]& /@ v10d2;
+    			newv10d4 = Append[#,0]& /@ v10d2;
+    			newv10d2[[Mod[dir+3,10,1],-1]] = 1;
+    			newv10d3[[Mod[dir+3,10,1],-1]] = 1;
+    			{tileThinRhomb,Mod[dir+5,10,1],{newv10d1,newv10d2,newv10d3,newv10d4}}
+    		}
+    	,tileDart,
+    		{
+    			newv10d1 = Append[#,0]& /@ v10d4;
+    			newv10d2 = Append[#,0]& /@ v10d1;
+    			newv10d3 = Append[#,0]& /@ v10d3;
+    			newv10d4 = Append[#,0]& /@ v10d4;
+    			newv10d4[[Mod[dir-0,10,1],-1]] = 1;
+    			{tileThickRhomb,Mod[dir-1,10,1],{newv10d1,newv10d2,newv10d3,newv10d4}}
+    		}
+    	]
+] (* sundivpenrose10d *)
+
+
+dbgpenrose10d[] :=
+    Module[ {},
+        lst1 =Table[{tileThickRhomb,idir,{
+        						Table[{0},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir-1,10,1],j]},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir-1,10,1],j]+KroneckerDelta[Mod[idir+1,10,1],j]},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]},{j,10}]
+			} },{idir,1,10,2}];
+		lst2 = Table[{tileThinRhomb,Mod[idir+6,10,1],{
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]+KroneckerDelta[Mod[idir+3,10,1],j]+KroneckerDelta[Mod[idir-1,10,1],j]},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]+KroneckerDelta[Mod[idir+3,10,1],j]},{j,10}], 
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]+KroneckerDelta[Mod[idir-1,10,1],j]},{j,10}]
+			} },{idir,1,10,4}];
+        tilelst = lst1;
+        tilelst = Join[lst1,lst2];
+        gl0 = (getGLpenrose10d /@ tilelst);
+        Print @ Graphics @ gl0;
+
+
+		Do[
+			tilelst = Flatten[#,1]& @ (subdivpenrose10d /@ tilelst);
+			gl =  (getGLpenrose10d /@ tilelst);
+        	Print @ Graphics[#,PlotLabel->"iter="<>ToString[iter]]& @ {(*Opacity[.2],gl0,Opacity[.8],*)gl};
+		,{iter,10}];
+		
+		
+] (* dbgpenrose10d[] *)
+
+prep[] :=
+    Module[ {},
+        lst1 =Table[{tileThickRhomb,idir,{
+        						Table[{0},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir-1,10,1],j]},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir-1,10,1],j]+KroneckerDelta[Mod[idir+1,10,1],j]},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]},{j,10}]
+			} },{idir,1,10,2}];
+		lst2 = Table[{tileThinRhomb,Mod[idir+6,10,1],{
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]+KroneckerDelta[Mod[idir+3,10,1],j]+KroneckerDelta[Mod[idir-1,10,1],j]},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]+KroneckerDelta[Mod[idir+3,10,1],j]},{j,10}], 
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]},{j,10}],
+        						Table[{KroneckerDelta[Mod[idir+1,10,1],j]+KroneckerDelta[Mod[idir-1,10,1],j]},{j,10}]
+			} },{idir,1,10,2}];
+        tilelst = Join[lst1,lst2];
+		Do[
+			tilelst = Flatten[#,1]& @ (subdivpenrose10d /@ tilelst);
+		,{iter,12}];
+		gl =  (getGLpenrose10d /@ tilelst);
+		center = {.66,.1};
+		center = {0,0};
+		r = 1.133;
+		Print @ Graphics[#,PlotLabel->"iter="<>ToString[iter]]& @ {gl,Opacity[.5],Red,Circle[center,r]};	
+
+		sel = Select[tilelst,euclidlen[(gettilecenetr[#]-center)] < r &];
+		AppendTo[sel,tilelst[[2805]] ];
+		AppendTo[sel,tilelst[[2807]] ];	
+		AppendTo[sel,tilelst[[744]] ];
+		AppendTo[sel,tilelst[[615]] ];
+		AppendTo[sel,tilelst[[1731]] ];
+		AppendTo[sel,tilelst[[3019]] ];
+		AppendTo[sel,tilelst[[2087]] ];
+		
+		sel = Union[sel];
+		gl =  (getGLpenrose10d /@ sel);
+		Print @ Graphics[#,PlotLabel->"iter="<>ToString[iter]]& @ {gl,Opacity[.5],Red,Circle[center,r]};	
+
+		{len1,len2} = {Select[sel, #[[1]] == 1 &] // Length, Select[sel, #[[1]] == 2 &] // Length};
+		Print[{len1,len2}];
+
+		fname = "data/initPatch_"<>ToString[len1]<>"_"<>ToString[len2]<>".txt";
+		Put[sel,fname];
+        Print[fname" written."];
+] (* prep[] *)
+
+
+polypenrose10d[] :=
+    Module[ {},
+    	fiboPatchBase = 16;
+    	fiboTileBase = 6;
+    	{len1,len2} = {Fibonacci[fiboPatchBase],Fibonacci[fiboPatchBase-1]};
+    	
+        fname = "data/initPatch_"<>ToString[len1]<>"_"<>ToString[len2]<>".txt";
+        tilelst = Get[fname]//RandomSample;
+        Print[fname" loaded."];
+        gl0 = (getGLpenrose10d /@ tilelst);
+        Print @ Graphics @ {gl0};
+        tilesType1 = Select[tilelst, #[[1]] == 1 &];
+        tilesType2 = Select[tilelst, #[[1]] == 2 &];
+
+        (* building 34 large and 21 small blobs if size 13={8,5} and 8={5,3} *)
+		{nLargeSites, nSmallSites} = {Fibonacci[fiboPatchBase-fiboTileBase+1], Fibonacci[fiboPatchBase-fiboTileBase]};
+		{largeblobspartA, largeblobspartB} = {Fibonacci[fiboTileBase], Fibonacci[fiboTileBase-1]};
+		{smallblobspartA, smallblobspartB} = {Fibonacci[fiboTileBase-1], Fibonacci[fiboTileBase-2]};
+		
+        largeblobs = smallblobs = {};
+        Do[
+        	AppendTo[largeblobs, Join[Take[tilesType1,largeblobspartA], Take[tilesType2,largeblobspartB] ] ];
+        	tilesType1 = Drop[tilesType1,largeblobspartA];
+        	tilesType2 = Drop[tilesType2,largeblobspartB];
+        ,{i,nLargeSites}];
+        
+        Do[
+        	AppendTo[smallblobs, Join[Take[tilesType1,smallblobspartA], Take[tilesType2,smallblobspartB] ] ];
+        	tilesType1 = Drop[tilesType1,smallblobspartA];
+        	tilesType2 = Drop[tilesType2,smallblobspartB];
+        ,{i,nSmallSites}];
+        
+        ccvtLargePts = Flatten/@ Table[
+        	{{RandomReal[]-.5,RandomReal[]-.5, largeblobspartA+largeblobspartB},
+        	Table[
+        		pos = Position[tilelst,largeblobs[[iblob,i]]][[1,1]];
+        		(*Print["large",{iblob,i} -> pos];*)
+        		{gettilecenetr[largeblobs[[iblob,i]]], largeblobs[[iblob,i,1]], pos, 1}
+        	,{i,largeblobspartA+largeblobspartB}] }
+        ,{iblob,nLargeSites}]//Chop;
+
+        ccvtSmallPts = Flatten/@ Table[
+        	{{RandomReal[]-.5,RandomReal[]-.5, smallblobspartA+smallblobspartB},
+        	Table[
+        		pos = Position[tilelst,smallblobs[[iblob,i]]][[1,1]];
+        		(*Print["small",{iblob,i} -> pos];*)
+        		{gettilecenetr[smallblobs[[iblob,i]]], smallblobs[[iblob,i,1]], pos, 1}
+        	,{i,smallblobspartA+smallblobspartB}] }
+        ,{iblob,nSmallSites}]//Chop;
+
+		ccvtPts = Join[ccvtLargePts, ccvtSmallPts];
+		nsites = Length[ccvtPts];
+        
+        fname = "tmp/ccvtPts_"<>pid<>".dat";
+        outfname = "tmp/out_"<>pid<>".dat";
+        Export[fname,ccvtPts];
+        
+        (*execstr = "ccvtNoTorParam "<>fname<>" "<>outfname<>" " <> ToString[nsites] <>" 100 1"; (* BAD! *)*)
+        execstr = "ccvtHex -e -i "<>fname<>" -o "<>outfname;
+       Print[execstr];
+        
+        Run[execPrefix<>execstr];
+        newdata = Import[outfname];
+        barycenters = Take[#,2]& /@ newdata;
+        Print @ Graphics[#,ImageSize->{400,400}]& @ {Point/@barycenters};
+        tmp = (#[[4]] & /@ #) & /@ (Partition[#,5]& /@ (Drop[#,3]& /@ newdata));
+        
+        newsites = Sort/@ Table[
+        	Table[
+        		ind = tmp[[iSite,i]];
+        		tilelst[[ind]]
+        	,{i,Length[tmp[[iSite]]]}]
+        ,{iSite,Length[tmp]}];
+        
+        gl = Table[
+        	col = getRandomColor[iSite];
+        	site = newsites[[iSite]];
+        	barycenter = Mean[gettilecenetr /@ site];
+        	{{col,Table[Polygon[gettilcontour[site[[i]]] ],{i,Length[site]}]},{Table[Line[gettilcontour[site[[i]]] ],{i,Length[site]}],
+        		{White,Disk[barycenter,.02]},
+        		Text[iSite,barycenter]}}
+        ,{iSite,Length[newsites]}];
+        
+        Print @ Graphics @ {gl};
+
+		
+] (* polypenrose10d[] *)
+
+
+(* nfold.m
+*)
+ 
+(****************** constants *******************)
+(****************** end of constants *******************)
+
+(****************** parameters *******************)
+
+sfcFlag = False;
+sfcLinesOnly = False;
+sfcArcs = False;
+sfcColor = Blue;
+sfcThickness = Thickness[.00001];
+borderFlag = True;
+borderColor = Black;
+borderTh = Thickness[0];
+borderAttr = {PointSize[.01],borderColor, borderTh};
+markborderFlag = False;
+markOriginFlag = False;
+
+decorFlag = False;
+simpleDecorFlag = False;
+redundantFlag = False;
+
+dbgLst = False;
+(****************** end of parameters *******************)
+
+(****************** procedure *******************)
+getFigure[z0_,z1_,type_]:=Block[{z2,z3},
+  z3 = rotatedaround[z1,z0,type*PI/nfold]//N;
+  z2 = z1 + (z3-z0);
+  Return[{type,{z0,z1,z2,z3}}]
+] (* getFigure *)
+
+getContour[flst_]:=Map[getOneContour, flst, {1}]
+getOneContour[fig_]:=Block[{type,v1,v2,v3,v4},
+  {type,{z0,z1,z2,z3}} = fig;
+  {Yellow,Thickness[0],Line[{z0,z1,z2,z3,z0}]}
+]; (*getOneContour*)
+
+getSimpleDecor[flst_]:=Map[getSimpleDecorFigure, flst, {1}]
+
+getSimpleDecorFigure[fig_]:=Block[{gl={Thickness[0]},type,z0,z1,z2,z3,
+  v,vx,vy,ix,iy},
+  {type,{z0,z1,z2,z3}} = fig;
+  Return[gl]
+]; (* getDecorFigure *)
+
+getDecor[flst_]:=Map[getDecorFigure, flst, {1}]
+
+getDecorFigure[fig_]:=Block[{gl={Thickness[0]},type,z0,z1,z2,z3,
+  v,vx,vy,ix,iy},
+  {type,{z0,z1,z2,z3}} = fig;
+  Return[gl]
+]; (* getDecorFigure *)
+
+
+getGLBinary[fig_]:=Block[{gl={},type,v1,v2,v3,v4,z0,z1,z2,z3,r,theta,
+  z01,z12,z23,z30, center},
+  If[dbgLst, Print[fig//InputForm]];
+  {type,{z0,z1,z2,z3}} = fig;
+  If[borderFlag,
+    If[markborderFlag,
+      v1 = (z1-z0)/25; v3 = (z2-z1)/25;
+      v2 = 2 rotatePI4[v1,{0,0}]; v4 = -2 rotatePI4[v3,{0,0}];
+      z01=(z0+z1)/2; z12=(z1+z2)/2; z23=(z2+z3)/2; z30=(z3+z0)/2;
+      AppendTo[gl,Line[{z0, z01-v1,z01+v2,z01+v1,
+                            z1, z12-v3,z12+v4,z12+v3,
+                            z2, z23+v1,z23+v2,z23-v1,
+                            z3, z30+v3,z30+v4,z30-v3, z0 }]];
+      AppendTo[gl,Line[{z0, z2 }]]
+    ,(*ELSE*)
+      AppendTo[gl,Line[{z0,z1,z2,z3,z0}] ];
+    ]; (* If[markborderFlag *)
+  ]; (* If[borderFlag *)
+  If[markOriginFlag, AppendTo[gl, Point[(4z0+z2)/5]]];
+  If[showType,
+    AppendTo[gl,{Blue,Text[type,Mean@{z0,z1,z2,z3}]} ];
+  ]; (* If[showType *)
+  If[showOrigin,
+      AppendTo[gl,Point[(10z0+z2)/11] ]
+  ]; (* showOrigin *)
+  Return[gl]
+] (* getGFigure *)
+
+decomposeFLst[flst_]:=Flatten[Map[decomposeFig, flst, {1}],1]
+
+decomposeFig[fig_]:=
+Block[{res={},type,z0,z1,z2,z3,v1,v2,v3},
+  {type,{z0,z1,z2,z3}} = fig;
+  z01 = rotatedaroundandscaled[z1,z0,-.5PI/nfold,kmag];
+  z10 = rotatedaroundandscaled[z3,z0,-.5PI/nfold,kmag];
+  v1 = (z01 - z0);
+  v2 = (z10 - z0);
+  v3 = rotatedaround[v2,{0,0},PI/nfold];
+  z02 = (z0 + z1) / 2;
+  z03 = z1 - v1;
+  z10 = z0 + v2;
+  z11 = z01 + v2;
+  z12 = z02 + v2;
+  z13 = z03 + v2;
+  z14 = z1 + v2;
+  z20 = z10 + v3;
+  z21 = z11 + v3;
+  z22 = z12 + v3;
+  z23 = z13 + v3;
+  z24 = z14 + v3;
+  z30 = z20 + v3;
+  z31 = z21 + v3;
+  z32 = z22 + v3;
+  z33 = z23 + v3;
+  z34 = z24 + v3;
+  If[1 < 2,
+    AppendTo[res,getFigure[z0,z01,type]];
+    AppendTo[res,getFigure[z01,z02,type-1]];
+    AppendTo[res,getFigure[z02,z03,type-1]];
+    AppendTo[res,getFigure[z03,z1,type]];
+    AppendTo[res,getFigure[z10,z11,type+1]];
+    AppendTo[res,getFigure[z11,z12,type]];
+    AppendTo[res,getFigure[z12,z13,type]];
+    AppendTo[res,getFigure[z13,z14,type+1]];
+    AppendTo[res,getFigure[z20,z21,type+1]];
+    AppendTo[res,getFigure[z21,z22,type]];
+    AppendTo[res,getFigure[z22,z23,type]];
+    AppendTo[res,getFigure[z23,z24,type+1]];
+    AppendTo[res,getFigure[z30,z31,type]];
+    AppendTo[res,getFigure[z31,z32,type-1]];
+    AppendTo[res,getFigure[z32,z33,type-1]];
+    AppendTo[res,getFigure[z33,z34,type]];
+  ];
+  If[type == 1,
+    AppendTo[res,getFigure[z0,z01,type]];
+    AppendTo[res,getFigure[z03,z1,type]];
+    AppendTo[res,getFigure[z10,z11,type+1]];
+    AppendTo[res,getFigure[z11,z12,type]];
+    AppendTo[res,getFigure[z12,z13,type]];
+    AppendTo[res,getFigure[z13,z14,type+1]];
+    AppendTo[res,getFigure[z20,z21,type+1]];
+    AppendTo[res,getFigure[z21,z22,type]];
+    AppendTo[res,getFigure[z22,z23,type]];
+    AppendTo[res,getFigure[z23,z24,type+1]];
+    AppendTo[res,getFigure[z30,z31,type]];
+    AppendTo[res,getFigure[z33,z34,type]];
+  ];
+  If[type == nfold-1,
+    AppendTo[res,getFigure[z0,z01,type]];
+    AppendTo[res,getFigure[z01,z02,type-1]];
+    AppendTo[res,getFigure[z02,z03,type-1]];
+    AppendTo[res,getFigure[z03,z1,type]];
+    AppendTo[res,getFigure[z11,z12,type]];
+    AppendTo[res,getFigure[z12,z13,type]];
+    AppendTo[res,getFigure[z21,z22,type]];
+    AppendTo[res,getFigure[z22,z23,type]];
+    AppendTo[res,getFigure[z30,z31,type]];
+    AppendTo[res,getFigure[z31,z32,type-1]];
+    AppendTo[res,getFigure[z32,z33,type-1]];
+    AppendTo[res,getFigure[z33,z34,type]];
+  ];
+  Return[res]
+] (* decomposeFigure *)
+
+(****************** end of procedure *******************)
+
+
+(************* prog starts here *************)
+mkBinary5Fold[] :=
+    Module[ {},
+		SetOptions[Graphics, ImageSize->{3 600,Automatic}, AspectRatio->Automatic, PlotRange->All];
+		nfold = 5;
+		niter = 2;
+        z0 = {0,0};
+        z1 = {1,0};
+        showOrigin = True;
+        showType = True;
+        
+        kmag = .5/euclidlen[z1+rotatedaround[z1,z0,PI/nfold]];
+        flst = {};
+        Do[
+          {dx,dy} = {Mod[2(i-1),(nfold-1)],1.5*Floor[2(i-1)/(nfold-1)]};
+          AppendTo[flst,getFigure[z0+{dx,dy},z1+{dx,dy},i]];
+        ,{i,1,nfold/2+2}];
+        gl0 = getGLBinary /@ flst;
+        Graphics[{gl0}]//Print;
+        p = Show[Graphics[gl]];
+        Do[
+          Print["iter=",iter];
+          flst = decomposeFLst[flst];
+          gl = getGLBinary /@ flst;
+          Graphics[{{Red,gl0},gl}]//Print;
+        ,{iter,niter}];
+    ]
+
+(***************
+center = (z1+rotatedaround[z1,z0,PI/nfold])/2;
+{dx,dy} = {.4,.25};
+ppp = Show[pp,PlotRange->{{center[[1]]-dx,center[[1]]+dx},
+                          {center[[2]]-dy,center[[2]]+dy}},
+	PlotLabel->"nfold_"<>ToString[nfold] ];
+Display["!psfix -land > p_nfold_"<>ToString[nfold]<>".ps", ppp];
+***************)

@@ -1,0 +1,247 @@
+(************** Content-type: application/mathematica **************
+                     CreatedBy='Mathematica 5.1'
+
+                    Mathematica-Compatible Notebook
+
+This notebook can be used with any Mathematica-compatible
+application, such as Mathematica, MathReader or Publicon. The data
+for the notebook starts with the line containing stars above.
+
+To get the notebook into a Mathematica-compatible application, do
+one of the following:
+
+* Save the data starting with the line of stars above into a file
+  with a name ending in .nb, then open the file inside the
+  application;
+
+* Copy the data starting with the line of stars above to the
+  clipboard, then use the Paste menu command inside the application.
+
+Data for notebooks contains only printable 7-bit ASCII and can be
+sent directly in email or through ftp in text mode.  Newlines can be
+CR, LF or CRLF (Unix, Macintosh or MS-DOS style).
+
+NOTE: If you modify the data for this notebook not in a Mathematica-
+compatible application, you must delete the line below containing
+the word CacheID, otherwise Mathematica-compatible applications may
+try to use invalid cache data.
+
+For more information on notebooks and Mathematica-compatible 
+applications, contact Wolfram Research:
+  web: http://www.wolfram.com
+  email: info@wolfram.com
+  phone: +1-217-398-0700 (U.S.)
+
+Notebook reader applications are available free of charge from 
+Wolfram Research.
+*******************************************************************)
+
+(*CacheID: 232*)
+
+
+(*NotebookFileLineBreakTest
+NotebookFileLineBreakTest*)
+(*NotebookOptionsPosition[      8711,        199]*)
+(*NotebookOutlinePosition[      9356,        221]*)
+(*  CellTagsIndexPosition[      9312,        217]*)
+(*WindowFrame->Normal*)
+
+
+
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[BoxData[
+    \(\(\( \
+(*\(\(**\)\(**\)\(**\)\(**\)\(**\)\)*\[IndentingNewLine]dodecagonal_half  \
+_vertBased  _TYPE1456  _showInflations . nb\[IndentingNewLine]V . O . 
+            UdeM\ january\ 2004\[IndentingNewLine]october\ 2005\  - \ 
+        version\ with\ 1  
+          d_lds\[IndentingNewLine]*******) \)\(\[IndentingNewLine]\)\(\
+\[IndentingNewLine]\)\(\(workingDirectory = "\<c:\\Documents and \
+Settings\\ostrom\\My Documents\\_ImportanceSampling_dodecagonal_half\>";\)\(\n\
+\)
+    \(If[$System \[Equal] "\<Microsoft Windows\>", 
+        SetDirectory[workingDirectory]];\)\(\n\)
+    \(Get["\<ImportanceSampling_common.m\>"];\)\(\n\)
+    \(Get["\<ImportanceSampling_dodecagonal_half_TYPE1456_vertBased.m\>"];\)\(\
+\n\)\(\[IndentingNewLine]\)
+    \(SetOptions[Graphics, ImageSize \[Rule] {950, Automatic}];\)\(\n\)
+    \(SetOptions[Graphics, ImageSize \[Rule] {1200, Automatic}];\)\(\n\)
+    \(SetOptions[Graphics, ImageSize \[Rule] {600, Automatic}];\)\(\n\)
+    \(font = "\<Courier\>"; 
+    textsz = 12;\)\(\[IndentingNewLine]\)\( (*\(--\(--\(--\(--\(--\(--\(--\(\
+--\(--\(--\(--\(--\(--\(--\(-\(\(\(\(\(\(\(\(\(\(\(\(\(\(params--\)--\)--\)\
+--\)--\)--\)--\)--\)--\)--\)--\)--\)--\)--\)\)\)\)\)\)\)\)\)\)\)\)\)\)\)\)\(-\
+\)*) \)\(\[IndentingNewLine]\)
+    \(rng = {{\(-1\), 1.5}, {\(-1.5\), 1}};\)\(\n\)
+    \(rng = {{\(-0\),  .7}, {\(- .3\),  .4}};\)\(\n\)
+    \(niter = 7;\)\(\n\)\(\[IndentingNewLine]\)\(\[IndentingNewLine]\)
+    \(fillFigure = False;\)\(\n\)
+    \(showEdges = False;\)\(\[IndentingNewLine]\)
+    \(showAmmannBars = False;\)\(\[IndentingNewLine]\)
+    \(showdir = False;\)\(\[IndentingNewLine]\)
+    \(cutOutOfRangeFlag = False;\)\(\n\)
+    \(shapeTrianlesOnly = False;\)\(\n\)
+    \(shapecol = Blue;\)\(\n\)
+    \({edgecol1, edgecol2, edgecol3, edgecol4} = {Cyan, 
+          RGBColor[ .9,  .7, 0], Red, Green};\)\(\[IndentingNewLine]\)
+    \(tileTypeCol = Red;\)\(\[IndentingNewLine]\)\(\n\)
+    \(showFcode\  = \ True;\)\(\[IndentingNewLine]\)
+    \(showTileType = False;\)\(\[IndentingNewLine]\)\(\[IndentingNewLine]\)
+    \(initfcodes = { (*order : 1, 2, 3, 4, 5, 
+            6*)  (*1*) {{0}, {1}, {2}, {3}},  (*2*) {{0}},  (*3*) {{0}, {4}, \
+{5}, {6}, {7}},  (*4*) {{0}},  (*5*) {{0}, {8}, {9}, {10}, {11}},  (*6*) \
+{{0}, {1}, {2}, {3}},  (*7*) {{0}, {12}, {13}, {14}},  (*8*) {{0}, {12}, \
+{13}, {14}},  (*9*) {{0}, {15}, {16}, {17}, {18}, {19}},  (*10*) {{0}},  (*11*) \
+{{0}, {20}, {21}, {22}, {23}},  (*12*) {{0}, {8}, {9}, {10}, {7}}};\)\(\
+\[IndentingNewLine]\)\(\[IndentingNewLine]\)
+    \(getRandomPermuts[permuts_] := 
+      Module[{i, iters = Random[Integer, {3, 10}], new = permuts, 
+          l = Length[permuts], i1, i2}, \[IndentingNewLine]If[permuts === {}, 
+          Return[{}]]; \[IndentingNewLine]Do[\[IndentingNewLine]\ \ {i1, 
+              i2} = {Random[Integer, {1, l}], 
+              Random[Integer, {1, l}]}; \[IndentingNewLine]new[\([{i1, 
+                  i2}]\)] = new[\([{i2, i1}]\)];\[IndentingNewLine], {i, 
+            iters}]; \[IndentingNewLine]Return[
+          new];\[IndentingNewLine]]\)\(\[IndentingNewLine]\)\(\
+\[IndentingNewLine]\)\( \
+(*\(\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(-end\)\)\)\)\)\)\
+\)\)\)\)\)\)\)\)\)\ of\ \
+\(\(\(\(\(\(\(\(\(\(\(\(\(\(params--\)--\)--\)--\)--\)--\)--\)--\)--\)--\)--\)\
+--\)--\)--\)\)\(-\)*) \)\(\n\)\(\[IndentingNewLine]\)\( (*\(--\(--\(--\(--\(\
+--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--prog\)\)\)\)\)\)\)\)\)\)\
+\)\)\)\)\)\)\)\)\ starts\ \
+\(\(\(\(\(\(\(\(\(\(\(\(\(\(\(\(\(\(here--\)--\)--\)--\)--\)--\)--\)--\)--\)\
+--\)--\)--\)--\)--\)--\)--\)--\)--\)*) \)\(\n\)\(\n\)
+    \(Do[\[IndentingNewLine]count = 
+        icount + 1089; \[IndentingNewLine]Print["\<Processing \>", 
+        count]; \[IndentingNewLine]fcodes = 
+        initfcodes; \[IndentingNewLine]Do[\[IndentingNewLine]\ 
+        permuts = 
+          Range[2, Length[fcodes[\([j]\)]]]; \[IndentingNewLine]rpermuts = 
+          getRandomPermuts[
+            permuts]; \[IndentingNewLine]fcodes[\([j, permuts]\)] = 
+          fcodes[\([j, rpermuts]\)];\[IndentingNewLine], {j, 
+          12}]; \[IndentingNewLine]type = 9; \[IndentingNewLine]maxLOS = 
+        niter; \[IndentingNewLine]shapesgl = \(gl = {}\); \
+\[IndentingNewLine]fig = 
+        getFigure[type, {0, 0}, 0, 1, {22}]; \[IndentingNewLine]flst = 
+        recursiveSubdiv[fig]; \[IndentingNewLine]thLeft = 
+        seqTotalLength[\([niter + 1]\)]; \[IndentingNewLine]thRight = 
+        seqTotalLength[\([niter + 
+              2]\)]; \[IndentingNewLine]pts = {}; \[IndentingNewLine]{x0, 
+          x1} = rng[\([1]\)]; \[IndentingNewLine]Do[\[IndentingNewLine]fig = 
+          flst[\([i]\)]; \[IndentingNewLine]{x, y} = 
+          getCenter[fig]; \[IndentingNewLine]If[
+          rng[\([1, 1]\)]\  < \ x\  < \ rng[\([1, 2]\)]\  && \ 
+            rng[\([2, 1]\)]\  < \ y < 
+              rng[\([2, 2]\)], \[IndentingNewLine]fcode = 
+            fig[\([\(-1\)]\)]; \[IndentingNewLine]val = 
+            fcodeValue[fcode]; \[IndentingNewLine]curThreshold\  = \ 
+            thLeft\  + \ \((thRight - 
+                    thLeft)\) \((x - x0)\)/\((x1 - 
+                      x0)\)\ ; \[IndentingNewLine]If[
+            val\  < \ curThreshold, \ 
+            AppendTo[pts, 
+              Point[{x, y}]]];\[IndentingNewLine]];\[IndentingNewLine], {i, 
+          Length[flst]}]; \[IndentingNewLine]fname = \
+"\<results_permuts\\fcodes_\>" <> 
+          ToString[count] <> "\<.data\>"; \[IndentingNewLine]Put[fcodes, 
+        fname]; \[IndentingNewLine]g = 
+        Graphics[{PointSize[ .006], gl, shapesgl, pts}, 
+          AspectRatio \[Rule] Automatic, 
+          PlotRange \[Rule] 
+            rng]; \[IndentingNewLine]fname = "\<results_permuts\\image_\>" <> 
+          ToString[count] <> "\<.gif\>"; \[IndentingNewLine]gifOut512[fname, 
+        g];\[IndentingNewLine], {icount, 
+        1000000}]\)\(\n\)\(\[IndentingNewLine]\)
+    \( (*\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(--\(\
+--\(--prog\)\)\)\)\)\)\)\)\)\)\)\)\)\)\)\)\)\)\ ends\ \
+\(\(\(\(\(\(\(\(\(\(\(\(\(\(\(\(\(\(here--\)--\)--\)--\)--\)--\)--\)--\)--\)\
+--\)--\)--\)--\)--\)--\)--\)--\)--\)*) \)\)\)\)], "Input"],
+
+Cell[BoxData[
+    \("ImportanceSampling_common.m loaded."\)], "Print"],
+
+Cell[BoxData[
+    \("ImportanceSampling_decagonal.m loaded."\)], "Print"],
+
+Cell[BoxData[
+    InterpretationBox[\("Processing "\[InvisibleSpace]1090\),
+      SequenceForm[ "Processing ", 1090],
+      Editable->False]], "Print"],
+
+Cell[OutputFormData["\<\
+$Aborted\
+\>", "\<\
+$Aborted\
+\>"], "Output"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+    \(Table[getRandomPermuts[{20, 21, 22, 23}], {256}] // Print\)], "Input"],
+
+Cell[BoxData[""], "Print",
+  GeneratedCell->False,
+  CellAutoOverwrite->False],
+
+Cell[BoxData[""], "Print",
+  GeneratedCell->False,
+  CellAutoOverwrite->False],
+
+Cell[BoxData[""], "Print",
+  GeneratedCell->False,
+  CellAutoOverwrite->False]
+}, Open  ]]
+},
+FrontEndVersion->"5.1 for Microsoft Windows",
+ScreenRectangle->{{0, 1440}, {0, 813}},
+WindowSize->{1269, 806},
+WindowMargins->{{-4, Automatic}, {Automatic, 0}}
+]
+
+(*******************************************************************
+Cached data follows.  If you edit this Notebook file directly, not
+using Mathematica, you must remove the line containing CacheID at
+the top of  the file.  The cache data will then be recreated when
+you save this file from within Mathematica.
+*******************************************************************)
+
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+
+(*NotebookFileOutline
+Notebook[{
+
+Cell[CellGroupData[{
+Cell[1776, 53, 6173, 108, 1750, "Input"],
+Cell[7952, 163, 70, 1, 25, "Print"],
+Cell[8025, 166, 73, 1, 25, "Print"],
+Cell[8101, 169, 151, 3, 25, "Print"],
+Cell[8255, 174, 70, 4, 27, "Output"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+Cell[8362, 183, 90, 1, 30, "Input"],
+Cell[8455, 186, 78, 2, 25, "Print"],
+Cell[8536, 190, 78, 2, 25, "Print"],
+Cell[8617, 194, 78, 2, 25, "Print"]
+}, Open  ]]
+}
+]
+*)
+
+
+
+(*******************************************************************
+End of Mathematica Notebook file.
+*******************************************************************)
+
