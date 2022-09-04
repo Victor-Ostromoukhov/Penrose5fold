@@ -36,21 +36,24 @@ PI = Pi//N;
 (****************** end of parameters *******************)
 
 
-showGrowthAmmannBars[inniters_:4, dbg_:False] :=
+showGrowthAmmannBars[inniters_:8, dbg_:False] :=
     Module[ {},
-    	showTileType = True;
-    	showFcode = True;
+    	showTileType = False;
+    	showFcode = False;
     	showSamplingPt = True;
 
         niters = inniters;
+        prevsgl = {};
         Do[
               maxLOS = iter;
               flst = Flatten[recursiveSubdiv /@ f0, 1];
               txtgl = shapesgl = sgl = {};
               basicgl = {getGLst[flst]};
               gl1 = {shapesgl,basicgl,txtgl};
-              g = Graphics[{gl1}, ImageSize -> {Automatic, 3/2 1024}];
+              g = Graphics[{gl1,AbsolutePointSize[10],sgl,Red,prevsgl}, ImageSize -> {Automatic, 3/2 1024}];
               g//Print;
+              
+              prevsgl = sgl;
               If[dbg, Export["g_AmmannBars_iter"<>ToString[iter]<>".pdf",g]];
          ,{iter,0,niters}];
     ]

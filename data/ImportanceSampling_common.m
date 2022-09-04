@@ -105,7 +105,8 @@ getGFigure[fig_]:=Block[{gl={},tileType,tileRefPt,tileVLst,tileDir,LOS,fcode,cen
     AppendTo[gl, {Black,Text[ToString[index],center,{0,0}] } ];
     
   ];
-  If[showSamplingPt, If[tileType > nSubdivisionTiles, AppendTo[sgl, Point[tileVLst[[1]]] ] ] ];
+  (*If[showSamplingPt, If[tileType > nSubdivisionTiles, AppendTo[sgl, Point[tileVLst[[1]]] ] ] ];*)
+  If[showSamplingPt, AppendTo[sgl, Point[tileVLst[[1]]] ] ];
   If[showdir,
       center = getCenter[fig];
       vect2 = scaletab[[LOS+3]] vv[[tileDir]];
