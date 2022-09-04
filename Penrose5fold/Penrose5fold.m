@@ -32,7 +32,23 @@ showAmmannBars = True;
 tileShapesTh = Thickness[0];
 tileShapesCol = Yellow;
 
+epsilon = 10^-10.;
+eps = 10^-6.;
+
+mf := MatrixForm
+T :=  Transpose
 PI = Pi//N;
+known := ValueQ
+i2s[n_,len_:6] := ToString[NumberForm[n, len-1, NumberPadding -> "0"]]
+r2s[n_,len_:6,dec_:5] := ToString[NumberForm[n, {len,dec}, NumberPadding -> "0"]]
+tab2s[tab_] := StringJoin @ Table[" "<>ToString[tab[[i]]]<>" ",{i,Length[tab]}]
+tab2snosep[tab_] := StringJoin @ Table[ ToString[tab[[i]]] ,{i,Length[tab]}]
+tab2ssep[tab_] := StringJoin @ Table["_"<>ToString[tab[[i]]],{i,Length[tab]}]
+tab2ssepComma[tab_] := StringJoin[ToString[tab[[1]]], Table[","<>ToString[tab[[i]]],{i,Min[2,Length[tab]], Length[tab]}] ]
+str2n[str_] := FromDigits[#, 2] & @ Table[StringTake[str, {i}] // ToExpression, {i, StringLength[str]}]
+
+pid := "_pid"<>ToString[$ProcessID]<>"_kid"<>ToString[$KernelID]
+execPrefix = "~/bin/";
 (****************** end of parameters *******************)
 
 
@@ -40,23 +56,24 @@ showGrowthAmmannBars[inniters_:8, dbg_:False] :=
     Module[ {},
     	showTileType = False;
     	showFcode = False;
-    	showSamplingPt = True;
+    	showSamplingPt = False;
 
         niters = inniters;
-        prevsgl = {};
+        prevpts = {};
         Do[
               maxLOS = iter;
               flst = Flatten[recursiveSubdiv /@ f0, 1];
               txtgl = shapesgl = sgl = {};
               basicgl = {getGLst[flst]};
               gl1 = {shapesgl,basicgl,txtgl};
-              g = Graphics[{gl1,AbsolutePointSize[10],sgl,Red,prevsgl}, ImageSize -> {Automatic, 3/2 1024}];
+              pts = Select[#, -.5 < #[[1]] < .5 && -.5 < #[[2]] < .5 &] & @ getSamplingPtsPenrose5fold[maxLOS];
+              g = Graphics[{gl1,AbsolutePointSize[10],Point/@pts,Red,Point/@prevpts}, PlotLabel->{maxLOS,Length[pts]}, ImageSize -> {Automatic, 3/2 1024} ];
               g//Print;
               
-              prevsgl = sgl;
+              prevpts = pts;
               If[dbg, Export["g_AmmannBars_iter"<>ToString[iter]<>".pdf",g]];
          ,{iter,0,niters}];
-    ]
+    ] (* showGrowthAmmannBars *)
 
 
 dbgInflationsAmmannBars[inniters_:4, dbg_:False] :=
@@ -79,8 +96,26 @@ dbgInflationsAmmannBars[inniters_:4, dbg_:False] :=
           g//Print;
           If[dbg, Export["g_dbgInflations_AmmannBars_iter"<>ToString[iter]<>".pdf",g] ];
         ,{iter,0,niters}];
-    ] (* dbgInflations *)
-	
+    ] (* dbgInflationsAmmannBars *)
+
+getSamplingPtsPenrose5fold[inniters_:1] :=
+    Module[ {flst,pts},
+        maxLOS = inniters;
+        flst = Flatten[#,1]& @ (recursiveSubdiv /@ f0);
+        pts = flst[[;;, 2]]//Chop;
+        pts = (Round[pts 100000000.]/100000000. // Union);
+        pts
+    ] (* getSamplingPtsPenrose5fold *)
+
+makeSamplingPtsPenrose5fold[inniters_:12] :=
+    Module[ {},
+        niters = inniters;
+        Do[
+        	pts = ({0.5, .5} + #) & /@ (Select[#, -.5 < #[[1]] < .5 && -.5 < #[[2]] < .5 &] & @ getSamplingPtsPenrose5fold[iter]);
+        	Print[iter -> Length[pts] ];
+        	Export["pts_Penrose5fold/pts_level"<>ToString[iter]<>".dat",pts];
+        ,{iter,niters}]
+     ] (* makeSamplingPtsPenrose5fold *)
 (*
 (****************** below: visuPenroseNara *******************)
 (****************** constants *******************)
