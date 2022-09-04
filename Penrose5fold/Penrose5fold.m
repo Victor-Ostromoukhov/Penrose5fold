@@ -1,23 +1,85 @@
-(* 5fold.m
-   V.O. version 2002/08/28
-	- SFC/matching rules (one step!)
-	- with depth levels/vals
-        - basic set of 10 different tiles: 3 + 3 thick and 2 + 2 thin
-                    or 5 different tiles if 0112 and 1223 are undistinguishable
-	- Penrose P1 marks added on 2002/09/28
-	
-	visuPenrose[]
-	
+(* Penrose5fold.m
+   V.O. based on version 2002/08/28
+   2022/09/04
+   
+   showGrowthAmmannBars[]
+   dbgInflationsAmmannBars[]
+   
+   visuPenroseNara[]
 *)
  
 (****************** parameters *******************)
 
-PI = Pi//N;
+SetDirectory[ToFileName[$HomeDirectory,"Penrose5fold/"]];
+SetOptions[Graphics, ImageSize -> {Automatic, 3/2 1024}];
 
-highlightIter:=niter; (* niter+2 invalid *)
+(*Get["data/ImportanceSampling_common.m"];
+Get["data/ImportanceSampling_decagonal.m"];
+*)
+showdir = False;
+showFcode = False;
+showShortFcode = False;
+cutOutOfRangeFlag = False;
+rng = All;
 font = "Courier-Bold"; textsz = 18;
+
+shapeTrianlesOnly = False;
+shapeTrianlesOnly = True;
+
+showAmmannBars = True;
+{ammanBarCol,ammanBarTh} = {Black,AbsoluteThickness[1]};
+
+tileShapesTh = Thickness[0];
+tileShapesCol = Yellow;
+
+PI = Pi//N;
 (****************** end of parameters *******************)
 
+
+showGrowthAmmannBars[inniters_:4, dbg_:False] :=
+    Module[ {},
+    	showTileType = True;
+    	showFcode = True;
+    	showSamplingPt = True;
+
+        niters = inniters;
+        Do[
+              maxLOS = iter;
+              flst = Flatten[recursiveSubdiv /@ f0, 1];
+              txtgl = shapesgl = sgl = {};
+              basicgl = {getGLst[flst]};
+              gl1 = {shapesgl,basicgl,txtgl};
+              g = Graphics[{gl1}, ImageSize -> {Automatic, 3/2 1024}];
+              g//Print;
+              If[dbg, Export["g_AmmannBars_iter"<>ToString[iter]<>".pdf",g]];
+         ,{iter,0,niters}];
+    ]
+
+
+dbgInflationsAmmannBars[inniters_:4, dbg_:False] :=
+    Module[ {},
+        niters = inniters;
+        {px,py} = {2.8,-1.2};
+        n = 2;
+        Do[
+          maxLOS = iter;
+          plbl = ToString[lbl]<>" iter="<>ToString[iter]<>" "<>date;
+          shapesgl = gl = {};
+          Do[
+            type = i;
+            {x,y} = {px,py} {(i-1) - n Floor[(i-1)/n], Floor[(i-1)/n]};
+            fig = getFigure[type,{x,y},dir,1,{}];
+            flst = recursiveSubdiv[fig];
+            AppendTo[gl, getGLst[flst]];
+          ,{i, Length[tileShapes] }];
+          g = Graphics[{PointSize[.003],gl,shapesgl}];
+          g//Print;
+          If[dbg, Export["g_dbgInflations_AmmannBars_iter"<>ToString[iter]<>".pdf",g] ];
+        ,{iter,0,niters}];
+    ] (* dbgInflations *)
+	
+(*
+(****************** below: visuPenroseNara *******************)
 (****************** constants *******************)
 tau = GoldenRatio//N;
 tau2 = tau^2;
@@ -639,7 +701,7 @@ getPivot[fig_]:=Block[{z0,z1,z2,z3,type=fig[[1]]},
 
 (************* prog starts here *************)
 
-visuPenrose[dbg_:False, inniters_:5] :=
+visuPenroseNara[inniters_:5, dbg_:False] :=
     Module[ {},
 		SetOptions[Graphics, ImageSize -> {1024,Automatic},AspectRatio->Automatic, PlotRange->All];
 		dbgFlag = dbg;
@@ -740,109 +802,5 @@ visuPenrose[dbg_:False, inniters_:5] :=
           bordergl = {borderColor};
           voronoigl = {voronoiColor,voronoiTh};
         ,{iter,niters}];
-    ] (* visuPenrose *)
-
-
-(*visuPenroseNara[dbg_:False, inniters_:4] :=
-    Module[ {},
-		SetOptions[Graphics, ImageSize -> {1/2 1024,Automatic},AspectRatio->Automatic, PlotRange->All, Axes->True];
-		dbgFlag = dbg;
-		niters = inniters;
-		twostepsFlag = True;
-		If[twostepsFlag, niters = niters/2];
-		If[twostepsFlag, lbl = "5fold_2steps", lbl = "5fold_1step"];
-		
-		showSepArrows = False;
-		showSFC = False;
-		sfcCol = Green;
-		showEdgeArrows = False; (* separate marking for 01 and 12 edges *)
-		arrTh = Thickness[.005];
-		showVoronoi = False;
-		voronoiColor = GrayLevel[.85];
-		voronoiTh = Thickness[.004];
-		
-		{sfcCol,sfcTh} = {Green,Thickness[.001]};
-		
-		nngon = 40;
-		ngon = Table[rotatedaround[{1,0},{0,0},2PI i/nngon],{i,0, nngon-1}];
-		ngonPlusHalf = Table[rotatedaround[{1,0},{0,0},2PI (i+.5)/nngon],{i,0, nngon-1}];
-		marksz = .01;
-		showThDisks = False;
-		borderFlag = True;
-		showDeBruijnIndices = False;
-		showXDeBruijnIndices = False;(*extended DeBruijnIndices*)
-		
-		showP1marks = True; (* marking like in Penrose P1 set *)
-		showNaramarks = False; (*  *)
-		p1marksth = Thickness[.001];
-		
-		showOrigin = False;
-		showGraphics = True;
-		  borderColor = Cyan;
-		  borderTh = .001;
-		  cutOutOfRangeFlag = False;
-		  symbolicForm = True; t = .; (* t in symbolic form *)
-		  symbolicForm = False; t = GoldenRatio//N;
-		  showThValues = True;
-		  showThValues = False;
-		redundantFlag = False;		
-		globaldelta = {0,0};
-		dbgLst = False;
-		
-        flst = {};
-        curSubdivLevel = 0;
-        curmag = 1;
-        z0 = {0,0} + globaldelta;
-        zstar = Table[rotatedaround[{0,tau},z0,(i-2/2) 2Pi/5]//N, {i,5}];
-        initgl = txtgl = {};
-        arrgl = {arrTh};
-        sfcgl = {sfcCol, sfcTh};
-        p1marks = marks = {PointSize[marksz]};
-        prev1bordergl = prev2bordergl = {};
-        prev1marks = prev2marks = {};
-        iter = 0;
-        bordergl = {PointSize[.005],borderColor, Thickness[borderTh]};
-        voronoigl = {voronoiColor,voronoiTh};
-        rng = All;
-        n = 3;
-        {px,py} = {1.2,1.9};
-        flst = {};
-        Do[
-          {x,y} = {px,py 1.1^(-Floor[(i-1)/n])} {(i-1) - n Floor[(i-1)/n], Floor[(i-1)/n]};
-          type = tileset[[i]];
-          AppendTo[flst,getFigure[{type,z0+{x,y},2,curmag,{curSubdivLevel,0,0}}]];
-        ,{i,If[dbgFlag,Length[tileset],1]}];
-        Print[flst//mf];
-        
-        gl0 = getGLst[flst];
-        plbl = lbl<>" "<>date;
-        p = Graphics[{bordergl,gl0,voronoigl,arrgl,sfcgl,marks,txtgl}];
-        p//Print;
-       
-        gl0 = bordergl/.{Line->Polygon,Cyan->LightYellow};
-        bordergl = {PointSize[.005],borderColor, Thickness[borderTh]};
-        Do[
-          If[ twostepsFlag,
-              curmag = curmag/tau2,
-              curmag = curmag/tau
-          ];
-          curSubdivLevel++;
-          textsz--;
-          Print[">>iter=",iter," curSubdivLevel=",curSubdivLevel];
-          plbl = lbl<>" "<>date;
-          flst = decomposeFLst[flst];
-          gl = {};
-          marks = {PointSize[marksz]};
-          txtgl = {};
-          arrgl = {arrTh};
-          sfcgl = {sfcCol, sfcTh};
-          voronoigl = {voronoiColor,voronoiTh};
-          AppendTo[gl,getGLst[flst]];
-          plbl = lbl<>" "<>date;
-          p = Graphics[{CapForm["Round"],gl0,voronoigl,arrgl,sfcgl,marks,txtgl, bordergl,gl}, PlotRange->If[dbgFlag,All,All(*{{-.3,.3},{.5,1.1}}*)]];
-          p//Print;
-          bordergl = {borderColor};
-          voronoigl = {voronoiColor,voronoiTh};
-        ,{iter,niters}];
     ] (* visuPenroseNara *)
-  *)  
+    *)
